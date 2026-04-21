@@ -1331,6 +1331,7 @@ var UpChunk = class {
     });
   }
   async sendChunk(chunk) {
+    this.pendingChunk = chunk;
     const endpoint = await this.getEndpoint(this.chunkCount).catch((e) => {
       const message = (e == null ? void 0 : e.message) ? `: ${e.message}` : "";
       this.dispatch("error", {
@@ -1470,7 +1471,10 @@ var UpChunk = class {
       if (this.success && chunkUploadSuccess) {
         this.dispatch("success");
       }
-      if (!chunkUploadSuccess) {
+      if (chunkUploadSuccess) {
+        this.pendingChunk = void 0;
+      } else {
+        this._paused = true;
         return;
       }
     }

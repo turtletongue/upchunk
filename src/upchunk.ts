@@ -677,6 +677,8 @@ export class UpChunk {
    * Send chunk of the file with appropriate headers
    */
   protected async sendChunk(chunk: Blob) {
+    this.pendingChunk = chunk;
+
     const endpoint = await this.getEndpoint(this.chunkCount).catch((e) => {
       const message = e?.message ? `: ${e.message}` : '';
       this.dispatch('error', {
@@ -874,7 +876,10 @@ export class UpChunk {
       if (this.success && chunkUploadSuccess) {
         this.dispatch('success');
       }
-      if (!chunkUploadSuccess) {
+      if (chunkUploadSuccess) {
+        this.pendingChunk = undefined;
+      } else {
+        this._paused = true;
         return;
       }
     }
