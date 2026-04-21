@@ -1391,7 +1391,7 @@ var UpChunk = class {
     const failedChunkUploadCb = async (res2, _chunk) => {
       this.dispatch("progress", Math.min(this.successfulPercentage * 100, 100));
       this.dispatch("error", {
-        message: `Server responded with ${res2.statusCode}. Stopping upload.`,
+        message: res2 ? `Server responded with ${res2.statusCode}. Stopping upload.` : "Upload failed, stopping.",
         chunk: this.chunkCount,
         attempts: this.attemptCount,
         response: res2
