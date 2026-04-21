@@ -322,7 +322,7 @@ type UpchunkEvent = CustomEvent & Event<EventName>;
 type AllowedMethods = 'PUT' | 'POST' | 'PATCH';
 
 export interface UpChunkOptions {
-  endpoint: string | ((file?: File) => Promise<string>);
+  endpoint: string | ((chunkNumber: number) => Promise<string>);
   file: File;
   method?: AllowedMethods;
   headers?: XhrHeaders | (() => XhrHeaders) | (() => Promise<XhrHeaders>);
@@ -342,7 +342,7 @@ export class UpChunk {
     return new UpChunk(options);
   }
 
-  public endpoint: string | ((file?: File) => Promise<string>);
+  public endpoint: string | ((chunkNumber: number) => Promise<string>);
   public file: File;
   public headers: XhrHeaders | (() => XhrHeaders) | (() => Promise<XhrHeaders>);
   public method: AllowedMethods;
@@ -411,16 +411,7 @@ export class UpChunk {
             defaultChunkSize: options.chunkSize,
           });
           this.chunkedIterator = this.chunkedIterable[Symbol.asyncIterator]();
-          this.getEndpoint()
-            .then(() => {
-              this.sendChunks();
-            })
-            .catch((e) => {
-              const message = e?.message ? `: ${e.message}` : '';
-              this.dispatch('error', {
-                message: `Failed to get endpoint${message}`,
-              });
-            });
+          this.sendChunks();
           this.off('error', readableStreamErrorCallback);
         }
       };
@@ -440,14 +431,7 @@ export class UpChunk {
     this.totalChunks = Math.ceil(this.file.size / this.chunkByteSize);
     this.validateOptions();
 
-    this.getEndpoint()
-      .then(() => this.sendChunks())
-      .catch((e) => {
-        const message = e?.message ? `: ${e.message}` : '';
-        this.dispatch('error', {
-          message: `Failed to get endpoint${message}`,
-        });
-      });
+    this.sendChunks();
 
     // restart sync when back online
     // trigger events when offline/back online
@@ -638,13 +622,13 @@ export class UpChunk {
   /**
    * Endpoint can either be a URL or a function that returns a promise that resolves to a string.
    */
-  private getEndpoint() {
+  private getEndpoint(chunkNumber: number) {
     if (typeof this.endpoint === 'string') {
       this.endpointValue = this.endpoint;
       return Promise.resolve(this.endpoint);
     }
 
-    return this.endpoint(this.file).then((value) => {
+    return this.endpoint(chunkNumber).then((value) => {
       this.endpointValue = value;
       if (typeof value !== 'string') {
         throw new TypeError('endpoint must return a string');
@@ -693,6 +677,17 @@ export class UpChunk {
    * Send chunk of the file with appropriate headers
    */
   protected async sendChunk(chunk: Blob) {
+    const endpoint = await this.getEndpoint(this.chunkCount).catch((e) => {
+      const message = e?.message ? `: ${e.message}` : '';
+      this.dispatch('error', {
+        message: `Failed to get endpoint${message}`,
+      });
+    });
+
+    if (!endpoint) {
+      return;
+    }
+
     const rangeStart = this.nextChunkRangeStart;
     const rangeEnd = rangeStart + chunk.size - 1;
     const extraHeaders = await (typeof this.headers === 'function'
@@ -713,7 +708,7 @@ export class UpChunk {
 
     return this.xhrPromise({
       headers,
-      url: this.endpointValue,
+      url: endpoint,
       method: this.method,
       body: chunk,
     });
