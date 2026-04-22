@@ -848,7 +848,14 @@ export class UpChunk {
       const chunk = this.pendingChunk;
       this.pendingChunk = undefined;
       const chunkUploadSuccess = await this.sendChunkWithRetries(chunk);
-      if (this.success && chunkUploadSuccess) {
+
+      // Still unsuccessful, can't send next chunk.
+      if (!chunkUploadSuccess) {
+        this._paused = true;
+        return;
+      }
+
+      if (this.success) {
         this.dispatch('success');
       }
     }

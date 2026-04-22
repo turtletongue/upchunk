@@ -1450,7 +1450,11 @@ var UpChunk = class {
       const chunk = this.pendingChunk;
       this.pendingChunk = void 0;
       const chunkUploadSuccess = await this.sendChunkWithRetries(chunk);
-      if (this.success && chunkUploadSuccess) {
+      if (!chunkUploadSuccess) {
+        this._paused = true;
+        return;
+      }
+      if (this.success) {
         this.dispatch("success");
       }
     }
