@@ -876,12 +876,13 @@ export class UpChunk {
       if (this.success && chunkUploadSuccess) {
         this.dispatch('success');
       }
-      if (chunkUploadSuccess) {
-        this.pendingChunk = undefined;
-      } else {
+
+      if (!chunkUploadSuccess) {
         this._paused = true;
         return;
       }
+
+      this.pendingChunk = undefined;
     }
   }
 }

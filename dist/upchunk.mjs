@@ -1471,12 +1471,11 @@ var UpChunk = class {
       if (this.success && chunkUploadSuccess) {
         this.dispatch("success");
       }
-      if (chunkUploadSuccess) {
-        this.pendingChunk = void 0;
-      } else {
+      if (!chunkUploadSuccess) {
         this._paused = true;
         return;
       }
+      this.pendingChunk = void 0;
     }
   }
 };
